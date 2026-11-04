@@ -10,7 +10,8 @@
     "shx": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=22.18.0"
@@ -24,7 +25,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "probe": "pnpm --filter wave-link-plugin exec tsdown --config tsdown.probe.config.ts && node artifacts/probe/probe.mjs"
   },
   "type": "module",
   "version": "0.1.0"

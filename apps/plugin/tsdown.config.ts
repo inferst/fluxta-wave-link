@@ -5,7 +5,9 @@ export default defineConfig({
   format: ["esm"],
   outDir: "../../dist/wave-link",
   clean: false,
-  copy: [{ from: "../../manifest.json" }],
-  noExternal: [/^@fluxta/],
-  onSuccess: "cd ../.. && fluxta restart || true",
+  copy: [
+    { from: "../../manifest.json" },
+    { from: "../../icons/*.svg", to: "../../dist/wave-link/icons" },
+  ],
+  deps: { alwaysBundle: [/.*/], onlyBundle: false },
 });

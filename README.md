@@ -1,38 +1,81 @@
-# Wave Link
+# Wave Link for Fluxta
 
-A Fluxta plugin scaffolded with `fluxta create`.
+Control one local Elgato Wave Link 3 instance from Fluxta on Windows or macOS.
+Created with `fluxta create`; uses the public Fluxta SDK and UI Kit.
 
-## Commands
+Development build: see [compatibility evidence](docs/compatibility.md).
+Real write checks and the Windows manual matrix remain pending.
 
-- `pnpm install` — install dependencies
-- `pnpm typecheck` — type-check the Plugin sidecar and Action Editor
-- `pnpm lint` — lint both apps with ESLint
-- `pnpm format` / `pnpm format:check` — format (or check formatting of) the whole package with Prettier
-- `pnpm build` — build the plugin into `dist/wave-link/`
-- `pnpm dev` — watch both apps; successful Plugin sidecar builds run `fluxta restart`
-- `fluxta validate` — validate the existing build output
+## Actions
 
-`fluxta restart` refreshes the Development Link and asks Fluxta to restart
-the Plugin process; it does not build the package.
+| Action        | Settings                                      |
+| ------------- | --------------------------------------------- |
+| Set Volume    | Target, Channel/Mix, percent (0–100)          |
+| Adjust Volume | Target, Channel/Mix, signed percentage points |
+| Set Mute      | Target, Channel/Mix, Mute / Unmute / Toggle   |
 
-## Before publishing
+Targets are Channel overall, Channel in Mix, and Mix overall. Each setting is
+independent. Unmuting a Channel in Mix does not unmute the overall Channel or
+Mix. Volume inputs accept Run Variables; resulting volume is clamped to 0–100%.
 
-`fluxta publish` fills in `maintainers` and `repository` on its own, from
-your GitHub login and the package's `origin` remote. `author` (and
-`homepage`, if you'd rather set it by hand instead of relying on
-`repository`) still need a real value in `manifest.json` before `fluxta
-validate` passes in strict publishable mode.
+Every Action returns `success` and `error` (empty on success). Check `success`
+before dependent steps: Fluxta continues a Run after plugin-step failures.
+Disconnected commands fail immediately and are never replayed.
 
-`fluxta publish` also runs `lint` and `format:check` itself before it
-authenticates or touches GitHub, and stops if either fails — fix them (or
-run `pnpm lint`/`pnpm format` yourself first) and retry.
+## Values and Events
 
-## Releasing on GitHub
+Sources provide current volume and mute at each level, `connected` and
+`connectionStatus`. Offline, deleted or unsupported Target values are absent.
+Mute is the selected flag, not effective silence. Volume is a fader setting,
+not a signal meter.
 
-`.github/workflows/release.yml` watches `manifest.json` on `main`. Push a
-commit that bumps its `version` field, and — once the `v<version>` tag it
-computes doesn't already exist — the workflow builds the plugin, packages it
-with `fluxta package` (the same publishable validation as running it
-locally), tags the commit, and opens a **draft** GitHub Release with the
-packaged zip attached. Review the generated release notes and publish the
-release by hand from the repository's Releases page.
+Volume Changed and Mute Changed include the Target kind, Channel/Mix ids and
+names, and old/new values. Connection Status Changed reports status and reason.
+The plugin's own changes also emit Events. Identical values, startup and
+reconnection hydration emit no volume/mute Events. Use conditions or idempotent
+setters when an Event-driven scenario writes back to its own Target.
+
+Live pickers save ids. Renames keep bindings. Deleted objects require explicit
+reselection, even if a replacement has the same name. Plugin settings show the
+connection, live settings and latest Action error.
+
+## Develop
+
+Node >=22.18 and the pnpm version pinned in package.json:
+
+```sh
+pnpm install
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm test
+pnpm build
+pnpm exec fluxta validate --warnings-as-errors
+```
+
+With Fluxta running:
+
+```sh
+pnpm exec fluxta link dist/wave-link
+pnpm dev
+```
+
+Builds produce `dist/wave-link/`. Plain builds do not restart Fluxta or touch
+Wave Link. After rebuilding the sidecar, run `pnpm exec fluxta restart`.
+Reopen an editor after an editor-only rebuild. Fluxta captures sidecar logs in
+the built folder. `pnpm exec fluxta unlink` removes the Development Link.
+
+`pnpm probe` verifies local discovery and reads Channels/Mixes without changing
+audio. It prints counts and capabilities, not the user's Channel names or ids.
+
+## Extend
+
+`apps/plugin/src/wave-link/` owns RPC, discovery and state independently of
+Fluxta. `actions/`, `sources/`, `options/` and `events/` expose it to Fluxta.
+`packages/protocol/` shares types/messages with `apps/editor/`.
+
+See [scope](docs/spec.md), [domain language](CONTEXT.md) and
+[protocol notes](docs/protocol.md). Preserve public ids and saved settings as
+features are added. Hardware gain, effects, routing, fades, meters and remote
+connections are deferred. Release workflow is manually dispatched; publication
+is a separate user decision.

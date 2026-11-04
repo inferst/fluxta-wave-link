@@ -6,7 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-  globalIgnores(["dist"]),
+  globalIgnores(["dist", "artifacts"]),
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {

@@ -2,7 +2,8 @@
   "dependencies": {
     "@fluxta/sdk": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "wave-link-protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "catalog:",
