@@ -27,3 +27,7 @@ Link 3 instance on Windows or macOS. Read CONTEXT.md and docs/spec.md first.
   in docs/compatibility.md; emulated protocol tests are not real-device evidence.
 - Use conventional commits. Publishing, GitHub repository creation, merging,
   default-branch pushes, tags and releases require explicit user instruction.
+- Issues: GitHub Issues at `inferst/fluxta-wave-link`. Use `needs-triage`,
+  `needs-info`, `ready-for-agent`, `ready-for-human` and `wontfix` as appropriate.
+  Cross-repository coordination for v1 lives in `fluxta/hub#23`; implementation
+  and application-compatibility checks are tracked in this repository.
