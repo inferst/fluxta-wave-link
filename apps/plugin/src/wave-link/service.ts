@@ -326,15 +326,27 @@ export class WaveLinkService {
     const rpc = this.rpc;
     const epoch = this.epoch;
     if (!rpc) return Promise.resolve();
-    const task = Promise.all([
-      this.readTargetList(rpc, { targetKind: "channel" }, epoch),
-      this.readTargetList(rpc, { targetKind: "mix" }, epoch),
-    ])
-      .then(() => undefined)
+    // Keep background snapshots outside each command's read/write/read
+    // sequence so a delayed poll cannot replace its confirmed state.
+    const task = this.tail
+      .then(async () => {
+        if (
+          epoch !== this.epoch ||
+          this.rpc !== rpc ||
+          !rpc.connected ||
+          !this.state.ready
+        )
+          return;
+        await Promise.all([
+          this.readTargetList(rpc, { targetKind: "channel" }, epoch),
+          this.readTargetList(rpc, { targetKind: "mix" }, epoch),
+        ]);
+      })
       .catch((error: unknown) => {
         if (epoch === this.epoch) this.lost(errorText(error));
         throw error;
       });
+    this.tail = task.catch(() => undefined);
     this.refreshing = task;
     void task
       .finally(() => {

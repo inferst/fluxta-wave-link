@@ -60,10 +60,13 @@ pnpm exec fluxta link dist/wave-link
 pnpm dev
 ```
 
-Builds produce `dist/wave-link/`. Plain builds do not restart Fluxta or touch
-Wave Link. After rebuilding the sidecar, run `pnpm exec fluxta restart`.
-Reopen an editor after an editor-only rebuild. Fluxta captures sidecar logs in
-the built folder. `pnpm exec fluxta unlink` removes the Development Link.
+Builds produce `dist/wave-link/`. Both `pnpm build` and sidecar rebuilds during
+`pnpm dev` automatically run `fluxta restart`. With Fluxta running, this creates
+or refreshes the Development Link and restarts the Wave Link plugin using the
+built output. A failed restart does not fail the build, so Fluxta can be closed
+while building. Reopen an editor after an editor-only rebuild. Fluxta captures
+sidecar logs in the built folder. `pnpm exec fluxta unlink` removes the
+Development Link.
 
 `pnpm probe` verifies local discovery and reads Channels/Mixes without changing
 audio. It prints counts and capabilities, not the user's Channel names or ids.

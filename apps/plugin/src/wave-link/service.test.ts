@@ -88,6 +88,89 @@ describe("Wave Link lifecycle and commands", () => {
     service.stop();
   });
 
+  describe.each([channel, contribution, mix])(
+    "background refreshes for $targetKind",
+    (target) => {
+      it("preserves both relative adjustments when an older poll reply arrives between command reads", async () => {
+        const { service, backend, callbacks } = harness();
+        backend.data.mixes[0].level = 0.5;
+        await service.start();
+        const initial = service.read(target)!.volumePercent!;
+        const method = target.targetKind === "mix" ? "getMixes" : "getChannels";
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        backend.beforeReply = async (request) => {
+          if (request === method) {
+            backend.beforeReply = undefined;
+            await gate;
+          }
+        };
+        await vi.advanceTimersByTimeAsync(5000);
+
+        const first = service.setVolume(target, 5, true);
+        await vi.advanceTimersByTimeAsync(0);
+        // Deliver the old poll snapshot immediately after the next command's
+        // fresh read, before its await continuation calculates the adjustment.
+        backend.afterRead = (request) => {
+          if (request === method) release();
+        };
+        const second = service.setVolume(target, 5, true);
+        await vi.advanceTimersByTimeAsync(0);
+        // A serialized command waits for the poll instead of starting a read.
+        release();
+        expect(await Promise.all([first, second])).toEqual([success, success]);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(service.read(target)?.volumePercent).toBeCloseTo(initial + 10);
+        expect(
+          callbacks.volumeChanged.mock.calls.map(([change]) => [
+            change.previousVolumePercent,
+            change.volumePercent,
+          ]),
+        ).toEqual([
+          [expect.closeTo(initial), expect.closeTo(initial + 5)],
+          [expect.closeTo(initial + 5), expect.closeTo(initial + 10)],
+        ]);
+        service.stop();
+      });
+
+      it("does not roll back a confirmed toggle or emit a false mute event", async () => {
+        const { service, backend, callbacks } = harness();
+        await service.start();
+        const method = target.targetKind === "mix" ? "getMixes" : "getChannels";
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        backend.beforeReply = async (request) => {
+          if (request === method) {
+            backend.beforeReply = undefined;
+            await gate;
+          }
+        };
+        await vi.advanceTimersByTimeAsync(5000);
+
+        const command = service.setMute(target, "toggle");
+        await vi.advanceTimersByTimeAsync(0);
+        release();
+        expect(await command).toEqual(success);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(service.read(target)?.muted).toBe(true);
+        expect(callbacks.muteChanged).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            targetKind: target.targetKind,
+            previousMuted: false,
+            muted: true,
+          }),
+        );
+        service.stop();
+      });
+    },
+  );
+
   it("clamps both absolute and relative volume and changes whole Mixes independently", async () => {
     const { service } = harness();
     await service.start();
@@ -318,6 +401,52 @@ describe("Wave Link lifecycle and commands", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(service.snapshot().status).toBe("connected");
     expect(service.read(mix)?.volumePercent).toBe(100);
+    service.stop();
+  });
+
+  it("allows commands after a failed background read and reconnection", async () => {
+    const { service, backend } = harness();
+    await service.start();
+    backend.beforeRequest = async (method) => {
+      if (method === "getChannels") {
+        backend.beforeRequest = undefined;
+        throw new Error("State read failed.");
+      }
+    };
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.read(channel)).toBeNull();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(service.snapshot().status).toBe("connected");
+    expect(await service.setVolume(channel, 5, true)).toEqual(success);
+    expect(service.read(channel)?.volumePercent).toBeCloseTo(85);
+    service.stop();
+  });
+
+  it("discards a queued notification refresh when its connection is replaced", async () => {
+    const { service, backend } = harness();
+    await service.start();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    backend.beforeRequest = async (method) => {
+      if (method === "getChannels") await gate;
+    };
+    const command = service.setVolume(channel, 5, true);
+    await vi.advanceTimersByTimeAsync(0);
+    backend.notify("channelChanged", { id: "new-channel" });
+    const oldRpc = backend.connections[0];
+    oldRpc.close();
+    backend.beforeRequest = undefined;
+    await vi.advanceTimersByTimeAsync(500);
+    const oldRequests = vi.spyOn(oldRpc, "request");
+    release();
+    expect((await command).success).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(oldRequests).not.toHaveBeenCalled();
+    expect(service.snapshot().status).toBe("connected");
+    expect(await service.setMute(channel, "toggle")).toEqual(success);
+    expect(service.read(channel)?.muted).toBe(true);
     service.stop();
   });
 

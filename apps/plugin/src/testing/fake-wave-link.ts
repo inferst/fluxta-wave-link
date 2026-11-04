@@ -31,6 +31,7 @@ export class FakeWaveLink {
   connections: Rpc[] = [];
   notify: Notification = () => undefined;
   beforeRequest?: (method: string) => Promise<void>;
+  beforeReply?: (method: string) => Promise<void>;
   afterRead?: (method: string) => void;
   ignoreWrites = false;
 
@@ -96,6 +97,8 @@ export class FakeWaveLink {
           }
           result = {};
         } else throw new Error(`Unexpected RPC method: ${method}`);
+        await this.beforeReply?.(method);
+        if (!connected) throw new Error("Wave Link disconnected.");
         accept?.(result);
         this.afterRead?.(method);
         return result;
