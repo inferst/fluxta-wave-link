@@ -1,2 +1,3 @@
 import { mountAction } from "./mount-action";
-mountAction("set-volume");
+import { SetVolumeEditor } from "./SetVolumeEditor";
+mountAction(<SetVolumeEditor />);

@@ -1,2 +1,3 @@
 import { mountAction } from "./mount-action";
-mountAction("set-mute");
+import { SetMuteEditor } from "./SetMuteEditor";
+mountAction(<SetMuteEditor />);

@@ -19,7 +19,7 @@
       "name": "Set Volume",
       "context": "standalone",
       "editor": "editor/set-volume.html",
-      "icon": "icons/audio.svg",
+      "icon": "icons/audio-lines.svg",
       "produces": [
         {
           "key": "success",
@@ -38,7 +38,7 @@
       "name": "Adjust Volume",
       "context": "standalone",
       "editor": "editor/adjust-volume.html",
-      "icon": "icons/audio.svg",
+      "icon": "icons/audio-lines.svg",
       "produces": [
         {
           "key": "success",
@@ -57,7 +57,7 @@
       "name": "Set Mute",
       "context": "standalone",
       "editor": "editor/set-mute.html",
-      "icon": "icons/audio.svg",
+      "icon": "icons/audio-lines.svg",
       "produces": [
         {
           "key": "success",
@@ -74,7 +74,7 @@
   ],
   "editor": "editor/index.html",
   "editorPlacement": "settings",
-  "icon": "icons/audio.svg",
+  "icon": "icons/audio-lines.svg",
   "sources": [
     {
       "key": "channelVolume",
